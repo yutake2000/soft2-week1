@@ -18,17 +18,108 @@ int ends_with(const char str[], const char suffix[]) {
 }
 
 /*
+  文字列を10進数で表した時の長さを返す関数
+  ただし、0の長さは0とする
+*/
+int number_len(int n) {
+  int len = 0;
+  while(n > 0) {
+    len++;
+    n /= 10;
+  }
+
+  return len;
+}
+
+/*
+  文字が空白、タブ、CR、LFのいずれかなら1を返す関数
+*/
+int isWhitespace(char c) {
+  return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+}
+
+int loadRLE(const int height, const int width, int cell[height][width], FILE *fp) {
+
+  char buffer[(int)1e4+1]; // 1行は70文字以下だが念のため
+  char rule_B[100];
+  char rule_S[100];
+  int y = 0, x = 0;
+  int offsetY = 0, offsetX = 0;
+  while(fgets(buffer, 1e4, fp) != NULL) {
+
+    if (buffer[0] == '#') {
+      if (buffer[1] == 'P' || buffer[1] == 'R') {
+        sscanf(buffer+2, "%d%d", &offsetX, &offsetY);
+        //printf("offset: %d %d\n", offsetX, offsetY);
+        y = offsetY;
+        x = offsetX;
+      }
+      continue;
+    }
+
+    if (buffer[0] == 'x' || buffer[0] == 'y' || buffer[0] == 'r') {
+      /*
+      int result = sscanf(buffer, "x = %d, y = %d, rule = B%[^/]/S%s", width, height, rule_B, rule_S);
+      printf("%d\n", result);
+      */
+    } else {
+      int offset = 0;
+      while(1) {
+        int len = 0;
+        char c;
+
+        while(isWhitespace(buffer[offset])) offset++;
+
+        int result = sscanf(buffer+offset, "%d", &len);
+        //printf("result: %d, len: %d\n", result, len);
+        offset += number_len(len);
+
+        if (len == 0) len++;
+
+        result = sscanf(buffer+offset, "%c", &c);
+        //printf("result: %d, c: %c\n", result, c);
+        offset++;
+
+        if (result <= 0 || c == '!') {
+          break;
+        } else if (c == '$') {
+          y += len;
+          x = offsetX;
+        } else if (c == 'b') {
+          x += len;
+        } else if (c == 'o') {
+          for (int i=0; i<len; i++) {
+            cell[y][x] = 1;
+            x++;
+          }
+        } else if (c == '\n' || c == '\r') {
+          printf("CRLF");
+          break;
+        } else {
+          fprintf(stderr,"Invalid syntax\n");
+          return EXIT_FAILURE;
+        }
+      }
+    }
+
+  }
+
+  return EXIT_SUCCESS;
+
+}
+
+/*
  ファイルによるセルの初期化: 生きているセルの座標が記述されたファイルをもとに2次元配列の状態を初期化する
  fp = NULL のときは、関数内で適宜定められた初期状態に初期化する。関数内初期値はdefault.lif と同じもの
  */
-int my_init_cells(const int *height, const int *width, int cell[*height][*width], char filename[]) {
+int my_init_cells(const int height, const int width, int cell[height][width], char filename[]) {
 
   if (filename[0] == 0) {
     /* ランダムに配置する */
     srand(time(NULL));
 
-    for (int y=0; y<*height; y++) {
-      for (int x=0; x<*width; x++) {
+    for (int y=0; y<height; y++) {
+      for (int x=0; x<width; x++) {
         cell[y][x] = (rand() % 10 == 0 ? 1 : 0);
       }
     }
@@ -51,7 +142,8 @@ int my_init_cells(const int *height, const int *width, int cell[*height][*width]
 
     } else if (ends_with(filename, ".rle")) {
 
-
+      int result = loadRLE(height, width, cell, fp);
+      if (result != 0) return EXIT_FAILURE;
 
     } else {
 
@@ -184,6 +276,7 @@ int main(int argc, char **argv)
   FILE *fp = stdout;
   const int height = 40;
   const int width = 70;
+  int h = 0, w = 0;
 
   int cell[height][width];
   for(int y = 0 ; y < height ; y++){
@@ -197,10 +290,10 @@ int main(int argc, char **argv)
     fprintf(stderr, "usage: %s [filename for init]\n", argv[0]);
     return EXIT_FAILURE;
   } else if (argc == 2) {
-    int result = my_init_cells(&height, &width, cell, argv[1]);
+    int result = my_init_cells(height, width, cell, argv[1]);
     if (result != 0) return EXIT_FAILURE;
   } else{
-    int result = my_init_cells(&height, &width, cell, ""); // デフォルトの初期値を使う
+    int result = my_init_cells(height, width, cell, ""); // デフォルトの初期値を使う
     if (result != 0) return EXIT_FAILURE;
   }
 
