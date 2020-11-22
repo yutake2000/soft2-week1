@@ -11,7 +11,7 @@ const char default_filename[] = "default.lif";
  */
 void my_init_cells(const int height, const int width, int cell[height][width], FILE* fp) {
 
-  int is_default = (fp == NULL);
+  int is_default = (fp == NULL); // デフォルトファイルを読み込むかどうか
 
   if (is_default) {
     fp = fopen(default_filename,"r");
@@ -21,16 +21,47 @@ void my_init_cells(const int height, const int width, int cell[height][width], F
     }
   }
 
-  fscanf(fp, "%*[^\n]\n");
+  fscanf(fp, "%*[^\n]\n"); // バージョン情報は読み飛ばす
+  
   int x, y;
   while (fscanf(fp, "%d%d", &x, &y) > 0) {
-    cell[y][x] = 0;
+    cell[y][x] = 1;
   }
 
   if (is_default) {
     fclose(fp);
   }
 
+}
+
+/*
+ グリッドの描画: 世代情報とグリッドの配列等を受け取り、ファイルポインタに該当する出力にグリッドを描画する
+ */
+void my_print_cells(FILE *fp, int gen, const int height, const int width, int cell[height][width]) {
+
+  // 世代情報を表示
+  fprintf(fp, "generateion = %d\r\n", gen);
+
+  /* 壁 */
+  fprintf(fp, "+");
+  for (int x=0; x<width; x++) fprintf(fp, "-");
+  fprintf(fp, "+\r\n");
+
+  /* グリッド */
+  for (int y=0; y<height; y++) {
+    fprintf(fp, "|");
+    for (int x=0; x<width; x++) {
+      fprintf(fp, "\e[31m%c\e[0m", (cell[y][x] ? '#' : ' ')); // 赤色で表示
+    }
+    fprintf(fp, "|\r\n");
+  }
+
+  /* 壁 */
+  fprintf(fp, "+");
+  for (int x=0; x<width; x++) fprintf(fp, "-");
+  fprintf(fp, "+\r\n");
+
+  fflush(fp);
 }
 
 int main(int argc, char **argv)
@@ -66,13 +97,13 @@ int main(int argc, char **argv)
     my_init_cells(height, width, cell, NULL); // デフォルトの初期値を使う
   }
 
-  print_cells(fp, 0, height, width, cell); // 表示する
+  my_print_cells(fp, 0, height, width, cell); // 表示する
   sleep(1); // 1秒休止
 
   /* 世代を進める*/
   for (int gen = 1 ;; gen++) {
     update_cells(height, width, cell); // セルを更新
-    print_cells(fp, gen, height, width, cell);  // 表示する
+    my_print_cells(fp, gen, height, width, cell);  // 表示する
     sleep(1); //1秒休止する
     fprintf(fp,"\e[%dA",height+3);//height+3 の分、カーソルを上に戻す(壁2、表示部1)
   }
