@@ -4,6 +4,11 @@
 #include <time.h>
 #include <string.h>
 
+int can_survive[9] = {0, 0, 1, 1, 0};
+int can_born[9] = {0, 0, 0, 1, 0};
+char rule_S[10] = "23";
+char rule_B[10] = "3";
+
 /*
   文字列strの最後がsuffixに一致するか判定する関数
 */
@@ -41,71 +46,80 @@ int isWhitespace(char c) {
 int loadRLE(const int height, const int width, int cell[height][width], FILE *fp) {
 
   char buffer[(int)1e4+1]; // 1行は70文字以下だが念のため
-  char rule_B[100];
-  char rule_S[100];
   int y = 0, x = 0;
   int offsetY = 0, offsetX = 0;
   while(fgets(buffer, 1e4, fp) != NULL) {
 
+    /* オフセット指定以外のヘッダー情報は読み飛ばす */
     if (buffer[0] == '#') {
       if (buffer[1] == 'P' || buffer[1] == 'R') {
         sscanf(buffer+2, "%d%d", &offsetX, &offsetY);
-        //printf("offset: %d %d\n", offsetX, offsetY);
         y = offsetY;
         x = offsetX;
       }
       continue;
     }
 
-    if (buffer[0] == 'x' || buffer[0] == 'y' || buffer[0] == 'r') {
-      /*
-      int result = sscanf(buffer, "x = %d, y = %d, rule = B%[^/]/S%s", width, height, rule_B, rule_S);
-      printf("%d\n", result);
-      */
-    } else {
-      int offset = 0;
-      while(1) {
-        int len = 0;
-        char c;
+    /* サイズ情報は読み飛ばし、ルールは反映する */
+    if (buffer[0] == 'x') {
+      int result = sscanf(buffer, "x = %*d, y = %*d, rule = B%9[^/]/S%9s", rule_B, rule_S);
+      printf("%s %s", rule_B, rule_S);
 
-        while(isWhitespace(buffer[offset])) offset++;
-
-        int result = sscanf(buffer+offset, "%d", &len);
-        //printf("result: %d, len: %d\n", result, len);
-        offset += number_len(len);
-
-        if (len == 0) len++;
-
-        result = sscanf(buffer+offset, "%c", &c);
-        //printf("result: %d, c: %c\n", result, c);
-        offset++;
-
-        if (result <= 0 || c == '!') {
-          break;
-        } else if (c == '$') {
-          y += len;
-          x = offsetX;
-        } else if (c == 'b') {
-          x += len;
-        } else if (c == 'o') {
-          for (int i=0; i<len; i++) {
-            cell[y][x] = 1;
-            x++;
-          }
-        } else if (c == '\n' || c == '\r') {
-          printf("CRLF");
-          break;
-        } else {
-          fprintf(stderr,"Invalid syntax\n");
-          return EXIT_FAILURE;
-        }
+      for (int i=0; i<=8; i++) {
+        can_survive[i] = 0;
+        can_born[i] = 0;
       }
+
+      for (int i=0; i<10; i++) {
+        int s = rule_S[i] - '0';
+        int b = rule_B[i] - '0';
+        if (0 <= s && s <= 8) can_survive[s] = 1;
+        if (0 <= b && b <= 8) can_born[s] = 1;
+
+      }
+      continue;
     }
 
+    int offset = 0; // 行の何文字目を次に読むか
+    while(1) {
+      int len = 0; // ランの長さ
+      char c; // タグ('o', 'b', '$', '!'のいずれか)
+
+      // 途中に空白が入っても対応可能
+      while(isWhitespace(buffer[offset])) offset++;
+
+      // ランの長さを取得(1が省略されている場合は何も読み込まない)
+      int result = sscanf(buffer+offset, "%d", &len);
+      // 読み込んだ分だけoffsetを加算(ただし0のままの場合は読みこんでないのでそのまま)
+      offset += number_len(len);
+
+      // 長さ省略時は1
+      if (len == 0) len = 1;
+
+      // ランのタグを取得
+      result = sscanf(buffer+offset, "%c", &c);
+      offset++;
+
+      if (result <= 0 || c == '!') { // 終了
+        break;
+      } else if (c == '$') { // 改行
+        y += len;
+        x = offsetX;
+      } else if (c == 'b') { // dead
+        x += len;
+      } else if (c == 'o') { // alive
+        for (int i=0; i<len; i++) {
+          cell[y][x] = 1;
+          x++;
+        }
+      } else {
+        fprintf(stderr,"Invalid syntax\n");
+        return EXIT_FAILURE;
+      }
+    }
   }
 
   return EXIT_SUCCESS;
-
 }
 
 /*
@@ -169,7 +183,7 @@ void my_print_cells(FILE *fp, int gen, const int height, const int width, int ce
   }
 
   // 世代情報と存在比を表示
-  fprintf(fp, "generateion = %d, alive:dead = %7d:%7d\r\n", gen, count_cells[1], count_cells[0]);
+  fprintf(fp, "rule: B%s/S%s, generateion = %d, alive:dead = %7d:%7d\r\n", rule_B, rule_S, gen, count_cells[1], count_cells[0]);
 
   /* 壁 */
   fprintf(fp, "+");
@@ -236,10 +250,10 @@ int my_count_adjacent_cells(int y, int x, const int height, const int width, int
 */
 int next_state(int y, int x, const int height, const int width, int cell[height][width], int neighbors) {
 
-  if (cell[y][x]) {
-    return (neighbors == 2 || neighbors == 3);
+  if (cell[y][x]) { 
+    return can_survive[neighbors];
   } else {
-    return (neighbors == 3);
+    return can_born[neighbors];
   }
 
 }
@@ -304,7 +318,7 @@ int main(int argc, char **argv)
     my_update_cells(height, width, cell); // セルを更新
     my_print_cells(fp, gen, height, width, cell);  // 表示する
     usleep(200*1000); //0.2秒休止する
-    fprintf(fp,"\e[%dA",height+3);//height+3 の分、カーソルを上に戻す(壁2、表示部1)
+    fprintf(fp,"\e[%dA",height+4);//height+3 の分、カーソルを上に戻す(壁2、表示部2)
   }
 
   return EXIT_SUCCESS;
