@@ -3,6 +3,36 @@
 #include <unistd.h> // sleep()関数を使う
 #include "gol.h"
 
+const char default_filename[] = "default.lif";
+
+/*
+ ファイルによるセルの初期化: 生きているセルの座標が記述されたファイルをもとに2次元配列の状態を初期化する
+ fp = NULL のときは、関数内で適宜定められた初期状態に初期化する。関数内初期値はdefault.lif と同じもの
+ */
+void my_init_cells(const int height, const int width, int cell[height][width], FILE* fp) {
+
+  int is_default = (fp == NULL);
+
+  if (is_default) {
+    fp = fopen(default_filename,"r");
+    if (fp == NULL) {
+      fprintf(stderr,"cannot open file %s\n", default_filename);
+      return;
+    }
+  }
+
+  fscanf(fp, "%*[^\n]\n");
+  int x, y;
+  while (fscanf(fp, "%d%d", &x, &y) > 0) {
+    cell[y][x] = 0;
+  }
+
+  if (is_default) {
+    fclose(fp);
+  }
+
+}
+
 int main(int argc, char **argv)
 {
   FILE *fp = stdout;
@@ -23,8 +53,8 @@ int main(int argc, char **argv)
   }
   else if (argc == 2) {
     FILE *lgfile;
-    if ( (lgfile = fopen(argv[1],"r")) != NULL ) {
-      init_cells(height,width,cell,lgfile); // ファイルによる初期化
+    if ((lgfile = fopen(argv[1],"r")) != NULL ) {
+      my_init_cells(height,width,cell,lgfile); // ファイルによる初期化
     }
     else{
       fprintf(stderr,"cannot open file %s\n",argv[1]);
@@ -33,7 +63,7 @@ int main(int argc, char **argv)
     fclose(lgfile);
   }
   else{
-    init_cells(height, width, cell, NULL); // デフォルトの初期値を使う
+    my_init_cells(height, width, cell, NULL); // デフォルトの初期値を使う
   }
 
   print_cells(fp, 0, height, width, cell); // 表示する
