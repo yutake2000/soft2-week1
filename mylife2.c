@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h> // sleep()関数を使う
+#include <time.h>
 
 /*
  ファイルによるセルの初期化: 生きているセルの座標が記述されたファイルをもとに2次元配列の状態を初期化する
@@ -8,25 +9,22 @@
  */
 void my_init_cells(const int height, const int width, int cell[height][width], FILE* fp) {
 
-  int is_default = (fp == NULL); // デフォルトファイルを読み込むかどうか
+  if (fp == NULL) {
+    /* ランダムに配置する */
+    srand(time(NULL));
 
-  if (is_default) {
-    fp = fopen("default.lif","r");
-    if (fp == NULL) {
-      fprintf(stderr,"cannot open file %s\n", "default.lif");
-      return;
+    for (int y=0; y<height; y++) {
+      for (int x=0; x<width; x++) {
+        cell[y][x] = (rand() % 10 == 0 ? 1 : 0);
+      }
     }
-  }
+  } else {
+    fscanf(fp, "%*[^\n]\n"); // バージョン情報は読み飛ばす
 
-  fscanf(fp, "%*[^\n]\n"); // バージョン情報は読み飛ばす
-
-  int x, y;
-  while (fscanf(fp, "%d%d", &x, &y) > 0) {
-    cell[y][x] = 1;
-  }
-
-  if (is_default) {
-    fclose(fp);
+    int x, y;
+    while (fscanf(fp, "%d%d", &x, &y) > 0) {
+      cell[y][x] = 1;
+    }
   }
 
 }
@@ -181,13 +179,12 @@ int main(int argc, char **argv)
   }
 
   my_print_cells(fp, 0, height, width, cell); // 表示する
-  sleep(1); // 1秒休止
 
   /* 世代を進める*/
   for (int gen = 1 ;; gen++) {
     my_update_cells(height, width, cell); // セルを更新
     my_print_cells(fp, gen, height, width, cell);  // 表示する
-    sleep(1); //1秒休止する
+    usleep(200*1000); //0.2秒休止する
     fprintf(fp,"\e[%dA",height+3);//height+3 の分、カーソルを上に戻す(壁2、表示部1)
   }
 
