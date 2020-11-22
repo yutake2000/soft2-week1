@@ -1,9 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h> // sleep()関数を使う
-#include "gol.h"
-
-const char default_filename[] = "default.lif";
 
 /*
  ファイルによるセルの初期化: 生きているセルの座標が記述されたファイルをもとに2次元配列の状態を初期化する
@@ -14,15 +11,15 @@ void my_init_cells(const int height, const int width, int cell[height][width], F
   int is_default = (fp == NULL); // デフォルトファイルを読み込むかどうか
 
   if (is_default) {
-    fp = fopen(default_filename,"r");
+    fp = fopen("default.lif","r");
     if (fp == NULL) {
-      fprintf(stderr,"cannot open file %s\n", default_filename);
+      fprintf(stderr,"cannot open file %s\n", "default.lif");
       return;
     }
   }
 
   fscanf(fp, "%*[^\n]\n"); // バージョン情報は読み飛ばす
-  
+
   int x, y;
   while (fscanf(fp, "%d%d", &x, &y) > 0) {
     cell[y][x] = 1;
@@ -64,6 +61,84 @@ void my_print_cells(FILE *fp, int gen, const int height, const int width, int ce
   fflush(fp);
 }
 
+int in_cells(int y, int x, const int height, const int width) {
+
+  if (y < 0 || height <= y) return 0;
+  if (x < 0 || width <= x) return 0;
+
+  return 1;
+}
+
+/*
+ 着目するセルの周辺の生きたセルをカウントする関数
+ */
+int my_count_adjacent_cells(int y, int x, const int height, const int width, int cell[height][width]) {
+
+  /*
+    dy, dx: 相対位置
+    012
+    7.3
+    654
+  */
+  int dy[] = {-1, -1, -1, 0, 1, 1, 1, 0};
+  int dx[] = {-1, 0, 1, 1, 1, 0, -1, -1};
+
+  int count = 0;
+  
+  for (int i=0; i<8; i++) {
+
+    int ny = y + dy[i];
+    int nx = x + dx[i];
+
+    if (in_cells(ny, nx, height, width) && cell[ny][nx]) {
+      count++;
+    }
+
+  }
+
+  return count;
+}
+
+/*
+  着目するセルの次の世代での状態を返す関数
+*/
+int next_state(int y, int x, const int height, const int width, int cell[height][width], int neighbors) {
+
+  if (cell[y][x]) {
+    return (neighbors == 2 || neighbors == 3);
+  } else {
+    return (neighbors == 3);
+  }
+
+}
+
+/*
+ ライフゲームのルールに基づいて2次元配列の状態を更新する
+ */
+void my_update_cells(const int height, const int width, int cell[height][width]) {
+
+  int next_cell[height][width];
+  for(int y = 0 ; y < height ; y++){
+    for(int x = 0 ; x < width ; x++){
+      next_cell[y][x] = 0;
+    }
+  }
+
+  for (int y=0; y<height; y++) {
+    for (int x=0; x<width; x++) {
+      int neighbors = my_count_adjacent_cells(y, x, height, width, cell);
+      next_cell[y][x] = next_state(y, x, height, width, cell, neighbors);
+    }
+  }
+
+  for(int y = 0 ; y < height ; y++){
+    for(int x = 0 ; x < width ; x++){
+      cell[y][x] = next_cell[y][x];
+    }
+  }
+
+}
+
 int main(int argc, char **argv)
 {
   FILE *fp = stdout;
@@ -102,7 +177,7 @@ int main(int argc, char **argv)
 
   /* 世代を進める*/
   for (int gen = 1 ;; gen++) {
-    update_cells(height, width, cell); // セルを更新
+    my_update_cells(height, width, cell); // セルを更新
     my_print_cells(fp, gen, height, width, cell);  // 表示する
     sleep(1); //1秒休止する
     fprintf(fp,"\e[%dA",height+3);//height+3 の分、カーソルを上に戻す(壁2、表示部1)
