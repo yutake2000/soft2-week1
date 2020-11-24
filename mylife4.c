@@ -218,6 +218,8 @@ int main(int argc, char **argv)
 
   if (argc != 3) {
     fprintf(stderr, "usage: %s [the rate of glass] [the rate of sheep]\n", argv[0]);
+    fprintf(stderr, "example 1: %s 80 10\n", argv[0]);
+    fprintf(stderr, "example 2: %s 1 20\n", argv[0]);
     return EXIT_FAILURE;
   }
 
