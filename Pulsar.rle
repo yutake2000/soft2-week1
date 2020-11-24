@@ -4,6 +4,7 @@
 #C far the most common of period greater than 2).
 #C www.conwaylife.com/wiki/index.php?title=Pulsar
 #P 5 5
-x = 20, y = 20, rule = B3/S23
-2b 3o 3b 3o 2b 2$ o4bobo4bo$o4bobo4bo$o4bobo4bo$2b3o3b3o2b2$2b3o3b3o2b$o4bob
-o4bo$o4bobo4bo$o4bobo4bo2$2b3o3b3o!
+x = 13, y = 13, rule = B3/S23
+2b 3o 3b 3o 2b 2$ o 4b o b o 4b o $ o 4b o b o 4b o $ o 4b o b o 4b
+o $ 2b 3o 3b 3o 2b 2$ 2b 3o 3b 3o 2b $ o 4b o b o 4b o $ o 4b o b o
+4b o $ o 4b o b o 4b o 2$ 2b 3o 3b 3o!

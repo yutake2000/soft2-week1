@@ -1,9 +1,29 @@
+/*================================================================================================
+
+RLEファイルの読み込みに対応
+
+ファイルの拡張子がrle(大文字でも可)ならRLEフォーマットとして、lifならLife 1.06フォーマットとして読み込む。
+
+ヘッダー情報は基本読み飛ばすが、#P,#Rで指定されたオフセット情報は適用する(0以上の場合のみ)。
+
+パターンのサイズは読み飛ばすが、B3/S23などのルールは反映する。
+  can_survive[i]は、隣接iマスが生存しているときに生存できるなら1。
+  can_born[i]は、隣接iマスが生存しているときに誕生できるなら1。
+
+fgetsで1行ずつ受け取ってからsscanfで情報を読み取っている(詳しくはloadRLE()を参照)。
+
+wikiによると「2b 3o」のように間に空白が入ることも許されているようなので、念のためそれにも対応した。
+(Pulsar.rleはわざと間に空白を入れてある。)
+
+================================================================================================*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h> // sleep()関数を使う
 #include <time.h>
 #include <string.h>
 
+/* デフォルトのルール */
 int can_survive[9] = {0, 0, 1, 1, 0};
 int can_born[9] = {0, 0, 0, 1, 0};
 char rule_S[10] = "23";
@@ -19,7 +39,24 @@ int ends_with(const char str[], const char suffix[]) {
 
   if (len_str < len_suf) return 0;
 
-  return (strcmp(str + len_str - len_suf, suffix) == 0);
+  char lower_str[255];
+  char lower_suffix[255];
+  strcpy(lower_str, str);
+  strcpy(lower_suffix, suffix);
+
+  /* 大文字は全て小文字にする */
+  for (int i=0; lower_str[i] != 0; i++) {
+    if ('A' <= lower_str[i] && lower_str[i] <= 'Z') {
+      lower_str[i] += 'a' - 'A';
+    }
+  }
+  for (int i=0; lower_suffix[i] != 0; i++) {
+    if ('A' <= lower_suffix[i] && lower_suffix[i] <= 'Z') {
+      lower_suffix[i] += 'a' - 'A';
+    }
+  }
+
+  return (strcmp(lower_str + len_str - len_suf, lower_suffix) == 0);
 }
 
 /*
@@ -54,8 +91,13 @@ int loadRLE(const int height, const int width, int cell[height][width], FILE *fp
     if (buffer[0] == '#') {
       if (buffer[1] == 'P' || buffer[1] == 'R') {
         sscanf(buffer+2, "%d%d", &offsetX, &offsetY);
-        y = offsetY;
-        x = offsetX;
+        if (offsetY < 0 || offsetX < 0) {
+          offsetY = 0;
+          offsetX = 0;
+        } else {
+          y = offsetY;
+          x = offsetX;
+        }
       }
       continue;
     }
