@@ -318,7 +318,7 @@ int main(int argc, char **argv)
     my_update_cells(height, width, cell); // セルを更新
     my_print_cells(fp, gen, height, width, cell);  // 表示する
     usleep(200*1000); //0.2秒休止する
-    fprintf(fp,"\e[%dA",height+4);//height+3 の分、カーソルを上に戻す(壁2、表示部2)
+    fprintf(fp,"\e[%dA",height+3);//height+3 の分、カーソルを上に戻す(壁2、表示部2)
   }
 
   return EXIT_SUCCESS;
