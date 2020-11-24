@@ -88,7 +88,7 @@ int loadRLE(const int height, const int width, int cell[height][width], FILE *fp
         int s = rule_S[i] - '0';
         int b = rule_B[i] - '0';
         if (0 <= s && s <= 8) can_survive[s] = 1;
-        if (0 <= b && b <= 8) can_born[s] = 1;
+        if (0 <= b && b <= 8) can_born[b] = 1;
 
       }
       continue;

@@ -62,7 +62,7 @@ int loadRLE(const int height, const int width, int cell[height][width], FILE *fp
 
     /* サイズ情報は読み飛ばし、ルールは反映する */
     if (buffer[0] == 'x') {
-      int result = sscanf(buffer, "x = %*d, y = %*d, rule = B%9[^/]/S%9s", rule_B, rule_S);
+      int result = sscanf(buffer, "x = %*d, y = %*d, rule = B%9[^/n]/S%9s", rule_B, rule_S);
       printf("%s %s", rule_B, rule_S);
 
       for (int i=0; i<=8; i++) {
@@ -74,9 +74,9 @@ int loadRLE(const int height, const int width, int cell[height][width], FILE *fp
         int s = rule_S[i] - '0';
         int b = rule_B[i] - '0';
         if (0 <= s && s <= 8) can_survive[s] = 1;
-        if (0 <= b && b <= 8) can_born[s] = 1;
-
+        if (0 <= b && b <= 8) can_born[b] = 1;
       }
+
       continue;
     }
 
